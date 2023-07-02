@@ -54,7 +54,7 @@ RegisterNetEvent('qb-diving:server:SellCoral', function()
             local price = v.price
             local reward = getItemPrice(item.amount, price)
             Player.Functions.RemoveItem(item.name, item.amount)
-            Player.Functions.AddMoney('cash', math.ceil(reward * item.amount), "sold-coral")
+            Player.Functions.AddMoney('cash', math.ceil(reward * item.amount), GetCurrentResourceName()..' - Sold Coral')
             TriggerClientEvent('inventory:client:ItemBox', src, QBCore.Shared.Items[item.name], "remove")
         end
     else

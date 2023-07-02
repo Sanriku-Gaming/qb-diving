@@ -3,6 +3,7 @@ local isLoggedIn = LocalPlayer.state['isLoggedIn']
 local zones = {}
 local currentArea = 0
 local inSellerZone = false
+local lightOn = false
 local currentDivingLocation = {
     area = 0,
     blip = {
@@ -64,7 +65,7 @@ end
 
 local function takeCoral(coral)
     if Config.CoralLocations[currentDivingLocation.area].coords.Coral[coral].PickedUp then return end
-	
+
     local ped = PlayerPedId()
     local times = math.random(2, 5)
     if math.random() > Config.CopsChance then callCops() end
@@ -130,7 +131,10 @@ local function setDivingLocation(divingLocation)
                         icon = 'fa-solid fa-water',
                         action = function()
                             takeCoral(k)
-                        end
+                        end,
+                        canInteract = function()
+                            return not v.PickedUp
+                        end,
                     }
                 },
                 distance = 2.0
@@ -219,6 +223,21 @@ local function createSeller()
     end
 end
 
+RegisterKeyMapping('toggleLight', 'Toggle Scuba Flashlight', 'keyboard', 'F')
+
+RegisterCommand('toggleLight', function()
+    local ped = PlayerPedId()
+    if currentGear.enabled then
+        if lightOn then
+            SetEnableScubaGearLight(ped, false)
+            lightOn = false
+        else
+            SetEnableScubaGearLight(ped, true)
+            lightOn = true
+        end
+    end
+end)
+
 -- Events
 
 RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
@@ -276,10 +295,10 @@ RegisterNetEvent('qb-diving:client:UseGear', function(bool)
             gearAnim()
             QBCore.Functions.TriggerCallback('qb-diving:server:RemoveGear', function(result, oxygen)
                 if result then
-                    QBCore.Functions.Progressbar("equip_gear", Lang:t("info.put_suit"), 5000, false, true, {}, {}, {}, {}, function() -- Done
+                    QBCore.Functions.Progressbar("equip_gear", Lang:t("info.put_suit"), 5000, false, false, {}, {}, {}, {}, function() -- Done
                         deleteGear()
                         local maskModel = `p_d_scuba_mask_s`
-                        local tankModel = `p_s_scuba_tank_s`
+                        local tankModel = `p_michael_scuba_tank_s`
                         RequestModel(tankModel)
                         while not HasModelLoaded(tankModel) do
                             Wait(0)
@@ -319,7 +338,9 @@ RegisterNetEvent('qb-diving:client:UseGear', function(bool)
                                         SetPedMaxTimeUnderwater(ped, 1.00)
                                         currentGear.enabled = false
                                     end
-                                    exports['qb-core']:DrawText("Oxygen Tank - Time Remaining: " .. currentGear.oxygen .. " seconds.", "left")
+                                    local flashlight = 'Off'
+                                    if lightOn then flashlight = 'On' end
+                                    exports['qb-core']:DrawText("Oxygen Tank - Time Remaining: " .. currentGear.oxygen .. " seconds.<br>[F] Flashlight: "..flashlight, "left")
                                 else
                                     exports['qb-core']:HideText()
                                 end
@@ -342,6 +363,8 @@ RegisterNetEvent('qb-diving:client:UseGear', function(bool)
                 TriggerServerEvent('qb-diving:server:GiveBackGear', currentGear.oxygen)
                 ClearPedTasks(ped)
                 deleteGear()
+                SetEnableScubaGearLight(ped, false)
+                lightOn = false
                 QBCore.Functions.Notify(Lang:t("success.took_out"))
             end)
         else
@@ -389,3 +412,39 @@ CreateThread(function()
         Wait(sleep)
     end
 end)
+
+if Config.Marker.UseMarker then
+    local color = Config.Marker.Color
+    local size = Config.Marker.Size
+    local rotate = 0
+    local face = 0
+    local bounce = 0
+    if Config.Marker.Rotate then
+        rotate = 1
+        face = 0
+    else
+        rotate = 0
+        face = 1
+    end
+    if Config.Marker.Bounce then
+        bounce = 1
+    end
+    CreateThread(function()
+        while true do
+            Wait(1)
+            if currentDivingLocation.area ~= 0 then
+                local pos = GetEntityCoords(PlayerPedId(), true)
+                for k, v in pairs(Config.CoralLocations[currentDivingLocation.area].coords.Coral) do
+                    if not v.PickedUp then
+                        local dist = #(pos - vector3(v.coords.x, v.coords.y, v.coords.z))
+                        if dist <= Config.Marker.Distance and (not Config.Marker.RequireFlashlight or (Config.Marker.RequireFlashlight and lightOn)) then
+                            DrawMarker(Config.Marker.Type, v.coords.x, v.coords.y, v.coords.z + 4.5, 0, 0, 0, 0, 0.0, 0, size[1], size[2], size[3], color[1], color[2], color[3], color[4], bounce, face, 0, rotate)
+                        end
+                    end
+                end
+            else
+                Wait(10000)
+            end
+        end
+    end)
+end

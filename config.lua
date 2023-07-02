@@ -5,6 +5,17 @@ Config.CopsChance = 0.5 -- The chance of the cops getting called when a coral ge
 
 Config.Debug = false
 
+Config.Marker = {
+    UseMarker = true,               -- Enable a DrawMarker for coral in active zone in addition to target/box zone
+    RequireFlashlight = true,       -- Require Diving Suit Flashlight ON to see markers
+    Distance = 20.0,                -- Distance to display the markers
+    Type = 0,                       -- Marker Type (https://docs.fivem.net/docs/game-references/markers/)
+    Size = {1.5, 1.5, 1.5},         -- Marker Size {x, y, z}
+    Rotate = true,                  -- True = Rotate the marker | False = Face the camera
+    Bounce = true,                  -- Bounce up and down
+    Color = {255, 255, 255, 80}     -- RGBA Color of Marker {Red, Green, Blue, Alpha}
+}
+
 Config.CoralLocations = {
     [1] = {
         label = "This is Location 1",
